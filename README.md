@@ -22,13 +22,13 @@ onde esse mesmo assembly e binário já estão implementados e validados
 
 ## Sumário
 
-1. [O algoritmo em C (do enunciado)](#1-o-algoritmo-em-c-do-enunciado)
-2. [Tradução para assembly MIPS](#2-tradução-para-assembly-mips)
-3. [Do assembly ao binário: como a montagem funciona](#3-do-assembly-ao-binário-como-a-montagem-funciona)
-4. [Automatizando com Python: `gerar_binario.py`](#4-automatizando-com-python-gerar_binariopy)
-5. [Validação](#5-validação)
-6. [Arquivos deste repositório](#6-arquivos-deste-repositório)
-7. [Como usar](#7-como-usar)
+1. [O algoritmo em C (do enunciado)](#user-content-1-o-algoritmo-em-c-do-enunciado)
+2. [Tradução para assembly MIPS](#user-content-2-tradução-para-assembly-mips)
+3. [Do assembly ao binário: como a montagem funciona](#user-content-3-do-assembly-ao-binário-como-a-montagem-funciona)
+4. [Automatizando com Python: `gerar_binario.py`](#user-content-4-automatizando-com-python-gerar_binariopy)
+5. [Validação](#user-content-5-validação)
+6. [Arquivos deste repositório](#user-content-6-arquivos-deste-repositório)
+7. [Como usar](#user-content-7-como-usar)
 
 
 ## 1) O algoritmo em C (do enunciado)
@@ -167,7 +167,11 @@ Tipo-J:  opcode(6) | address(26)
 | `$0`  | 0  | 00000 |
 | `$a0` | 4  | 00100 |
 | `$a1` | 5  | 00101 |
-| `$t0`–`$t4` | 8–12 | 01000–01100 |
+| `$t0` | 8  | 01000 |
+| `$t1` | 9  | 01001 |
+| `$t2` | 10 | 01010 |
+| `$t3` | 11 | 01011 |
+| `$t4` | 12 | 01100 |
 | `$s0` | 16 | 10000 |
 | `$s1` | 17 | 10001 |
 
@@ -219,6 +223,26 @@ immediate(15) = 0000000000001111
                                    ---------------------------------
 palavra final:                    00010001000000000000000000001111
 ```
+
+**`addi $s1, $s0, -1`** (índice 17) — o caso de um imediato **negativo**,
+o ponto que mais costuma confundir: o campo de 16 bits guarda o valor
+em complemento de dois, não um sinal separado. `-1` em complemento de
+dois de 16 bits é `1111111111111111` (todos os bits em 1):
+
+```
+opcode(addi) = 001000
+rs ($s0)     = 10000
+rt ($s1)     = 10001
+immediate(-1) = 1111111111111111
+                                   ---------------------------------
+palavra final:                    00100010000100011111111111111111
+```
+
+Ao decodificar de volta, o processador faz extensão de sinal desse
+campo de 16 para 32 bits (repete o bit mais significativo, que aqui é
+`1`), recuperando `0xFFFFFFFF`, que em complemento de dois de 32 bits
+é `-1` — é assim que `$s1` recebe `i - 1` corretamente mesmo quando o
+resultado é negativo.
 
 ### Resultado: as 33 instruções em binário
 
