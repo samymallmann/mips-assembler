@@ -1,0 +1,221 @@
+==================================================================
+RELATORIO TECNICO - FERRAMENTA DE APOIO
+Gerador de Binario para o Processador MIPS Pipeline
+==================================================================
+
+
+------------------------------------------------------------------
+1) TITULO
+------------------------------------------------------------------
+
+Gerador de Binario para o Processador MIPS Pipeline (asm2bin do
+programa de ordenacao)
+
+
+------------------------------------------------------------------
+2) OBJETIVO E MOTIVACAO
+------------------------------------------------------------------
+
+Este documento descreve uma ferramenta desenvolvida por iniciativa
+propria da equipe, alem do que foi solicitado no enunciado da
+disciplina, para apoiar a continuidade do projeto do processador MIPS
+com pipeline.
+
+Contexto: a primeira entrega do projeto exigiu a "memoria de programa
+codificada em binario" - ou seja, o codigo de maquina (33 instrucoes
+de 32 bits, em binario puro) do programa de ordenacao usado como
+teste, gerado a partir do assembly em `asm/sort.asm` e do montador
+`tb/assemble_sort.py` do projeto principal (pasta `mips_pipeline`).
+Esse binario e' o arquivo que a memoria de instrucoes do processador
+le' via `$readmemb`, e e' tambem o arquivo que precisa ser copiado
+para a pasta do projeto no Quartus (mesma pasta do `.qpf`) na hora de
+embarcar o processador na placa DE10-Lite.
+
+Problema identificado: o vetor de teste usado hoje ({8, 3, 7, 1, 9,
+4}) esta' "hardcoded" no assembly - cada valor vira uma instrucao
+`addi`/`sw` escrita a mao. Se a equipe quiser, mais adiante no
+projeto, testar o processador com outro vetor (validar mais casos,
+demonstrar na apresentacao com um vetor diferente, etc.), o caminho
+"oficial" seria editar `asm/sort.asm` a mao, trocando cada valor, e
+rodar o montador de novo - um processo manual, repetitivo e sujeito a
+erro de digitacao (fica facil errar um endereco de `sw` ou esquecer
+de atualizar o `n`).
+
+Objetivo desta ferramenta: eliminar esse trabalho manual. Em vez de
+editar o assembly a mao toda vez que o vetor de teste mudar, a
+ferramenta pergunta os valores do vetor diretamente no terminal e ja'
+devolve o arquivo `.bin` pronto, no formato exato que o processador
+espera - bastando copiar esse arquivo para a pasta do projeto no
+Quartus e recompilar. Isso nao foi pedido pelo professor, mas reduz
+significativamente o atrito de iterar sobre o projeto dai' pra frente
+(testar novos vetores, preparar demonstracoes, depurar comportamento
+com casos diferentes), sem exigir que a equipe entenda o processo
+manual de montagem toda vez.
+
+
+------------------------------------------------------------------
+3) COMO A FERRAMENTA FUNCIONA
+------------------------------------------------------------------
+
+A ferramenta e' o script `gerar_binario.py`, escrito em Python 3,
+localizado nesta mesma pasta, ao lado de `sort.asm` (copia de
+referencia do assembly original do projeto).
+
+Ela reimplementa, de forma parametrizada pelo vetor de entrada, a
+mesma logica do montador oficial do projeto (`tb/assemble_sort.py`
+em `mips_pipeline`), garantindo compatibilidade total com o restante
+do processador. O fluxo interno e':
+
+  1. Leitura do vetor: o script pede os valores do vetor (separados
+     por espaco ou virgula) e valida que sao inteiros dentro do
+     intervalo representavel por um imediato de 16 bits do MIPS
+     (-32768 a 32767, limite da instrucao `addi`).
+
+  2. Montagem do assembly equivalente: com base nos valores
+     informados, o script monta internamente o mesmo programa de
+     `sort.asm` (inicializacao de `n` e do vetor + a rotina completa
+     de `sort()`/`swap()` inline), mas com `n` = quantidade de
+     valores informados e uma instrucao `addi`/`sw` gerada
+     dinamicamente para cada valor do vetor - o mesmo padrao usado
+     manualmente no `sort.asm` original, so' que automatico e
+     valido para vetores de qualquer tamanho (nao apenas 6 elementos).
+
+  3. Montagem em codigo de maquina (assembler de 2 passadas):
+       - 1a passada: percorre as instrucoes e monta a tabela de
+         rotulos (`sort`, `for1tst`, `for2tst`, `exit2`, `exit1`,
+         `done`), guardando em que posicao (indice da instrucao) cada
+         rotulo aparece.
+       - 2a passada: codifica cada instrucao em uma palavra de 32
+         bits, usando exatamente os mesmos opcodes, codigos de funcao
+         e mapeamento de registradores que o `control_unit.v` e o
+         `alu_control.v` do processador decodificam:
+           * Tipo-R (add, sub, and, or, slt, sll) - opcode 0,
+             campo funct especifico de cada instrucao.
+           * Tipo-I (addi, lw, sw, beq, bne) - opcode proprio de cada
+             instrucao, com o campo imediato calculado (inclusive o
+             deslocamento relativo de `beq`/`bne`, calculado como
+             `rotulo_destino - (indice_atual + 1)`, igual a como o
+             processador interpreta o PC-relative branch).
+           * Tipo-J (j) - opcode 2, com o endereco absoluto do
+             rotulo de destino.
+
+  4. Escrita do arquivo `.bin`: grava uma palavra de 32 bits por
+     linha, em binario puro (apenas caracteres `0`/`1`), com fim de
+     linha `\n` (forcado explicitamente, ja' que o Python no Windows
+     grava `\r\n` por padrao em modo texto - o `$readmemb` do
+     Icarus/Quartus espera o mesmo formato de texto simples usado
+     pelos `.bin` do projeto principal).
+
+Suporte de instrucoes: identico ao subconjunto que o processador
+implementa - `addi`, `add`, `sub`, `and`, `or`, `slt`, `sll`, `lw`,
+`sw`, `beq`, `bne`, `j`. Nao ha' suporte a instrucoes fora desse
+conjunto porque o processador nao as decodifica.
+
+
+------------------------------------------------------------------
+4) VALIDACAO
+------------------------------------------------------------------
+
+Para garantir que a ferramenta gera exatamente o mesmo resultado que
+o montador oficial do projeto (e, portanto, que o processador ja'
+validado nos testbenches vai interpretar corretamente), o script foi
+testado com o vetor de teste original do enunciado, {8, 3, 7, 1, 9,
+4}, e o `.bin` gerado foi comparado byte a byte com o
+`tb/sort_program.bin` do projeto principal (arquivo ja' validado
+pelos testbenches `tb_sort_program.v`, com 6/6 checagens passando).
+
+Resultado: os dois arquivos sao identicos, instrucao por instrucao
+(33/33), incluindo o fim de linha. Isso confirma que a ferramenta
+reproduz fielmente a codificacao esperada pelo processador para
+qualquer vetor de entrada, nao apenas para o caso original.
+
+
+------------------------------------------------------------------
+5) COMO USAR (FLUXO PENSADO PARA O RESTO DO PROJETO)
+------------------------------------------------------------------
+
+  1. Rodar `python gerar_binario.py` nesta pasta.
+  2. Informar os valores do novo vetor de teste quando solicitado
+     (ex.: `5 2 9 1 7`).
+  3. Informar o nome do arquivo de saida (ou aceitar o padrao
+     `sort_program.bin`).
+  4. Copiar o `.bin` gerado para a pasta do projeto no Quartus (a
+     mesma pasta do arquivo `.qpf`), substituindo o `sort_program.bin`
+     existente - e' ali que `de10lite_top.v` aponta o parametro
+     `INSTR_INIT_FILE` (sem caminho, so' o nome do arquivo).
+  5. Recompilar o projeto no Quartus (Processing -> Start
+     Compilation) e regravar a placa - nao e' preciso alterar nenhum
+     arquivo `.v`.
+
+Esse fluxo elimina a etapa manual de editar assembly e reduz a
+geracao de um novo caso de teste a "rodar o script e copiar um
+arquivo".
+
+
+------------------------------------------------------------------
+6) OBSERVACAO SOBRE O ESCOPO DESTE MATERIAL
+------------------------------------------------------------------
+
+Esta ferramenta e a documentacao acima nao substituem nem alteram
+nada do projeto principal entregue na disciplina (pasta
+`mips_pipeline`): o assembly original (`asm/sort.asm`), o montador
+oficial (`tb/assemble_sort.py`) e o `tb/sort_program.bin` usado nos
+testbenches permanecem exatamente como estao. Este material e' um
+complemento de apoio ao trabalho da equipe daqui pra frente
+(iteracao mais rapida sobre novos vetores de teste), desenvolvido por
+iniciativa propria, alem do que foi pedido no enunciado.
+
+
+------------------------------------------------------------------
+7) ORGANIZACAO SUGERIDA EM REPOSITORIO (uso futuro da equipe)
+------------------------------------------------------------------
+
+Sugestao: versionar esta pasta (`codigo_assembly`) num repositorio
+git privado separado do material entregue na disciplina, ja' que e'
+uma ferramenta de apoio da equipe, nao parte do enunciado.
+
+Sugestoes de nome para o repositorio:
+
+  a) mips-asm2bin
+     - Nome tecnico, direto: descreve exatamente o que a ferramenta
+       faz (assembly -> binario). Facil de entender so' pelo nome.
+
+  b) mipsort-toolkit
+     - Combina com "MIPSort", uma das sugestoes de nome do projeto
+       principal (ver relatorio da 1a entrega) - se a equipe adotar
+       esse nome pro projeto, este repositorio fica reconhecivel como
+       "a caixa de ferramentas" dele.
+
+  c) mips-binary-forge
+     - Nome mais "de produto", sugere que a ferramenta "forja" o
+       binario a partir do assembly. Boa opcao se quiserem algo com
+       mais identidade visual/nome de projeto pessoal.
+
+  d) vetor2bin-mips
+     - Enfatiza o caso de uso concreto (trocar o vetor de teste e
+       gerar o binario), o mais literal dos quatro.
+
+  e) mips-pipeline-tools
+     - Nome mais generico/aberto, caso a equipe queira usar o mesmo
+       repositorio no futuro pra outras ferramentas de apoio ao
+       projeto (nao so' o gerador de binario).
+
+Recomendacao: "mips-asm2bin" se o repositorio for ficar so' com esta
+ferramenta, ou "mips-pipeline-tools" se a ideia for um repositorio
+"guarda-chuva" pra qualquer script de apoio que a equipe for
+criando ao longo do semestre.
+
+Estrutura sugerida dentro do repositorio:
+
+  mips-asm2bin/
+    README.md                    - explicacao curta (resumo deste
+                                    relatorio) + como usar
+    sort.asm                     - copia de referencia do assembly
+    gerar_binario.py             - a ferramenta
+    relatorio_gerador_binario.txt - este documento
+
+------------------------------------------------------------------
+
+==================================================================
+Fim do documento.
+==================================================================
