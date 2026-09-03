@@ -1,18 +1,24 @@
-# mips-asm2bin
+# mips-assembler
 
-Do algoritmo em C do enunciado até o código de máquina em binário
-executado pelo processador — passo a passo, e depois automatizado em
-Python.
+Um montador (assembler) para o subconjunto de MIPS implementado no
+processador do projeto: traduz assembly em código de máquina binário,
+pronto para `$readmemb`. O motor de montagem (resolução de rótulos em
+duas passadas + codificação por opcode/funct) não é amarrado a nenhum
+programa específico — vale para qualquer sequência das instruções que
+o processador decodifica (`add`, `sub`, `and`, `or`, `slt`, `sll`,
+`addi`, `lw`, `sw`, `beq`, `bne`, `j`). O script interativo de hoje
+(`gerar_binario.py`) usa esse motor especificamente para o programa de
+ordenação do enunciado, parametrizado pelo vetor de entrada — é o
+**exemplo de ponta a ponta**, do C ao binário, documentado abaixo.
+Aceitar um `.asm` arbitrário como entrada (não só o vetor) é listado
+como trabalho futuro na seção 4.
 
-Este repositório documenta e automatiza especificamente a etapa de
-**tradução do algoritmo de ordenação para assembly MIPS e a montagem
-desse assembly em binário puro** (o formato lido por `$readmemb` na
-memória de instruções). É complementar ao repositório do processador
-em si — [`mips-pipeline`](https://github.com/samymallmann/mips-pipeline) —,
+Este repositório documenta esse processo de tradução — C → assembly
+MIPS → binário — e mostra a automação em Python que resolve a etapa
+de montagem. É complementar ao repositório do processador em si —
+[`mips-pipeline`](https://github.com/samymallmann/mips-pipeline) —,
 onde esse mesmo assembly e binário já estão implementados e validados
-(pasta `mips_pipeline/asm/` e `mips_pipeline/tb/`). Aqui o foco é
-explicar **como** se chega do C ao binário, e mostrar a ferramenta que
-automatiza essa conversão pra qualquer vetor de teste.
+(pasta `mips_pipeline/asm/` e `mips_pipeline/tb/`).
 
 ## Sumário
 
