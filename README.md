@@ -1,12 +1,23 @@
 # mips-assembler
 
-Um montador (assembler) para o subconjunto de MIPS implementado no
-processador do projeto: traduz assembly em código de máquina binário,
-pronto para `$readmemb`. O motor de montagem (resolução de rótulos em
-duas passadas + codificação por opcode/funct) não é amarrado a nenhum
-programa específico — vale para qualquer sequência das instruções que
-o processador decodifica (`add`, `sub`, `and`, `or`, `slt`, `sll`,
-`addi`, `lw`, `sw`, `beq`, `bne`, `j`). O script interativo de hoje
+> ⚠️ **Assembler de padrão fixo e propositalmente restrito — não é um
+> montador MIPS genérico.** Reconhece **exatamente estas 12
+> instruções**, nem uma a mais: `add` `sub` `and` `or` `slt` `sll`
+> `addi` `lw` `sw` `beq` `bne` `j`. Nada fora desse conjunto é aceito —
+> inclusive pseudo-instruções comuns em outros montadores (`li`,
+> `move`, `la`, etc.) **não existem aqui**. Essa rigidez não é uma
+> limitação incompleta: ela espelha, de propósito, o subconjunto exato
+> de MIPS que o processador do projeto decodifica (ver
+> `control_unit.v`/`alu_control.v`). Qualquer coisa fora dessas 12
+> instruções está fora de escopo por design.
+
+Um montador (assembler) para esse subconjunto fixo de MIPS
+implementado no processador do projeto: traduz assembly em código de
+máquina binário, pronto para `$readmemb`. O motor de montagem
+(resolução de rótulos em duas passadas + codificação por
+opcode/funct) não é amarrado a nenhum programa específico — vale para
+qualquer sequência das 12 instruções acima que o processador
+decodifica. O script interativo de hoje
 (`gerar_binario.py`) usa esse motor especificamente para o programa de
 ordenação do enunciado, parametrizado pelo vetor de entrada — é o
 **exemplo de ponta a ponta**, do C ao binário, documentado abaixo.
@@ -129,13 +140,16 @@ done:
 
 ## 3) Do assembly ao binário: como a montagem funciona
 
-O processador implementa um subconjunto pequeno e fixo do MIPS —
+O processador implementa um subconjunto pequeno e **fixo** do MIPS —
 `add`, `sub`, `and`, `or`, `slt`, `sll` (tipo-R), `addi`, `lw`, `sw`,
-`beq`, `bne` (tipo-I) e `j` (tipo-J) — cada um decodificado por
-`opcode`/`funct` em `control_unit.v`/`alu_control.v` do processador.
-Montar assembly em binário é, essencialmente, transformar cada linha
-de mnemônico + operandos numa palavra de 32 bits que respeite esses
-três formatos:
+`beq`, `bne` (tipo-I) e `j` (tipo-J), 12 instruções e nenhuma outra —
+cada uma decodificada por `opcode`/`funct` em
+`control_unit.v`/`alu_control.v` do processador. O montador segue essa
+mesma rigidez: qualquer mnemônico fora dessa lista (incluindo
+pseudo-instruções como `li`/`move`/`la`) não é reconhecido e a
+montagem falha. Montar assembly em binário é, essencialmente,
+transformar cada linha de mnemônico + operandos numa palavra de 32
+bits que respeite esses três formatos:
 
 ```
 Tipo-R:  opcode(6) | rs(5) | rt(5) | rd(5) | shamt(5) | funct(6)
