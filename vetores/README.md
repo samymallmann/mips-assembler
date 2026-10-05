@@ -11,6 +11,9 @@ Um vetor por pasta (nome = valores de entrada). Cada pasta tem:
 | [`8_3_7_1_9_4/`](8_3_7_1_9_4/) | 8 3 7 1 9 4 | 1 3 4 7 8 9 (enunciado) |
 | [`5_2_9_0_6_1/`](5_2_9_0_6_1/) | 5 2 9 0 6 1 | 0 1 2 5 6 9 |
 | [`7_3_7_0_3_1/`](7_3_7_0_3_1/) | 7 3 7 0 3 1 | 0 1 3 3 7 7 (valores repetidos) |
+| [`9_8_7_6_5_4/`](9_8_7_6_5_4/) | 9 8 7 6 5 4 | 4 5 6 7 8 9 (pior caso: decrescente) |
+| [`1_2_3_4_5_6/`](1_2_3_4_5_6/) | 1 2 3 4 5 6 | 1 2 3 4 5 6 (melhor caso: já ordenado) |
+| [`5_5_5_5_5_5/`](5_5_5_5_5_5/) | 5 5 5 5 5 5 | 5 5 5 5 5 5 (todos iguais) |
 
 Todos validados no Icarus Verilog com o processador do
 [`mips-monociclo`](https://github.com/samymallmann/mips-monociclo), onde as
