@@ -357,6 +357,8 @@ codificação das instruções.
 - [`relatorio_gerador_binario.txt`](relatorio_gerador_binario.txt) —
   relatório técnico da ferramenta (motivação, funcionamento interno,
   validação, fluxo de uso), em formato mais formal.
+- [`vetores/`](vetores/README.md) — vetores já testados, um por pasta
+  (`.bin`, `.asm` e saída esperada).
 
 
 ## 7) Como usar
